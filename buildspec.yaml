@@ -7,14 +7,15 @@ phases:
     commands:
       - echo "Installing dependencies..."
       - pip install -r requirements.txt
+  pre_build:
+    commands:
       - echo "Installing Docker..."
-      - amazon-linux-extras install docker
+      - sudo amazon-linux-extras install docker
       - sudo service docker start
       - sudo usermod -a -G docker ec2-user  # Replace with the appropriate username if not ec2-user
   build:
     commands:
       - echo "Building Docker image..."
-      - set -x
       - docker build -t my-flask-app .
       - echo "Tagging Docker image..."
       - docker tag my-flask-app:latest juyel1/my-flask-app:latest
@@ -29,16 +30,11 @@ phases:
       - aws secretsmanager get-secret-value --secret-id $AWS_SECRET_ID --query 'SecretString' --output text | jq -r '.privateKey' > $PRIVATE_KEY_FILE
       - chmod 400 $PRIVATE_KEY_FILE
       
-      # Install Docker if not already installed
-      - if ! command -v docker &> /dev/null; then
-          echo "Installing Docker on remote server...";
-          ssh -i $PRIVATE_KEY_FILE ubuntu@35.85.58.52 'sudo amazon-linux-extras install docker';
-          ssh -i $PRIVATE_KEY_FILE ubuntu@35.85.58.52 'sudo service docker start';
-          ssh -i $PRIVATE_KEY_FILE ubuntu@35.85.58.52 'sudo usermod -a -G docker ec2-user';  # Replace with the appropriate username if not ec2-user
-      - fi
+      # Install Docker if not already installed on the remote server
+      - ssh -i $PRIVATE_KEY_FILE ubuntu@35.85.58.52 'if ! command -v docker &> /dev/null; then sudo amazon-linux-extras install docker; sudo service docker start; sudo usermod -a -G docker ec2-user; fi'
       
       # Deploy the Docker container
-      - ssh -i $PRIVATE_KEY_FILE ubuntu@35.85.58.52 'docker stop my-flask-container; docker rm my-flask-container; docker pull juyel1/my-flask-app:latest; docker run -d -p 80:80 --name my-flask-container juyel1/my-flask-app:latest'
+      - ssh -i $PRIVATE_KEY_FILE ubuntu@35.85.58.52 'docker stop my-flask-container || true; docker rm my-flask-container || true; docker pull juyel1/my-flask-app:latest; docker run -d -p 80:80 --name my-flask-container juyel1/my-flask-app:latest'
 
 artifacts:
   files: '**/*'
