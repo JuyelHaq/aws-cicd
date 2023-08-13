@@ -8,7 +8,7 @@ phases:
       - echo "Installing dependencies..."
       - pip install -r requirements.txt
       - echo "Installing Docker..."
-      - sudo amazon-linux-extras install docker
+      - amazon-linux-extras install docker
       - sudo service docker start
       - sudo usermod -a -G docker ec2-user  # Replace with the appropriate username if not ec2-user
   build:
